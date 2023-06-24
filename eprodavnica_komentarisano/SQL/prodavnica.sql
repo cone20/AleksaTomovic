@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Jun 23, 2023 at 10:14 PM
+-- Generation Time: Jun 24, 2023 at 12:13 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.1.17
 
@@ -64,11 +64,11 @@ INSERT INTO `artikli` (`id`, `naziv`, `kolicina`, `cena`, `opis`) VALUES
 (3, 'Lubenica', 99, 20, 'Sveze voce'),
 (4, 'Ulje Dijamant', 100, 10, 'Dijamant suncokretovo ulje'),
 (5, 'Trik Perece', 310, 3, '-'),
-(6, 'Bake Rolls Salt', 501, 5, 'Bake Rolls sa slanim ukusom'),
+(6, 'Bake Rolls Salt', 499, 5, 'Bake Rolls sa slanim ukusom'),
 (7, 'Bake Rolls Pizza', 23, 6, 'Bake Rolls sa ukusom pice'),
 (8, 'Chipsy Domacinski Sir', 98, 4, 'Chipsy \"domacinski\" cips sa ukusom sira'),
 (9, 'Kokice (100gr)', 100, 8.99, 'Kokice'),
-(10, 'Bas Bas Tortilla Chips', 370, 8.5, 'Tzatziki tortilja cips'),
+(10, 'Bas Bas Tortilla Chips', 358, 8.5, 'Tzatziki tortilja cips'),
 (11, 'Plazma Slana (140g)', 1000, 9.99, 'Maslina i sir, 140g'),
 (12, 'FLIPS CLIPSY NUGAT 80G MARBO', 34, 10, '-'),
 (13, 'BIOGRIC OVAS I LAN', 15, 15, '70G'),
@@ -79,7 +79,7 @@ INSERT INTO `artikli` (`id`, `naziv`, `kolicina`, `cena`, `opis`) VALUES
 (18, 'Mini Snack Mix', 100, 23.55, 'Rifuz 100g'),
 (19, 'Jaffacakes ', 283, 18, '-'),
 (20, 'Najlepse zelje 100g', 234, 10, 'Mlecna cokolada'),
-(21, 'Eurocrem ', 80, 23, '-'),
+(21, 'Eurocrem ', 65, 23, '-'),
 (22, 'Napolitanke Stark Kokos', 183, 17.22, '-'),
 (23, 'Negro bombone', 389, 9, 'Odzacar grla'),
 (24, 'Noblice', 239, 10, 'Sendvic keks'),
@@ -121,8 +121,23 @@ CREATE TABLE `korisnici` (
 --
 
 INSERT INTO `korisnici` (`id`, `email`, `lozinka`, `ime`, `prezime`, `stanje`) VALUES
-(1, 'test@gmail.com', '202cb962ac59075b964b07152d234b70', 'Test', 'Test', 586.02),
+(1, 'test@gmail.com', '202cb962ac59075b964b07152d234b70', 'Test', 'Test', 65.52),
 (2, 'test1@gmail.com', '202cb962ac59075b964b07152d234b70', 'Test1', 'Test1', 1000);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `korisnici_artikli`
+--
+
+CREATE TABLE `korisnici_artikli` (
+  `id` int(11) NOT NULL,
+  `korisnici_id` int(11) NOT NULL,
+  `artikli_id` int(11) NOT NULL,
+  `kolicina` int(11) DEFAULT NULL,
+  `datum_kupovine` datetime DEFAULT NULL,
+  `cena` float DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Indexes for dumped tables
@@ -148,6 +163,14 @@ ALTER TABLE `korisnici`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `korisnici_artikli`
+--
+ALTER TABLE `korisnici_artikli`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `FK_korisnici` (`korisnici_id`),
+  ADD KEY `FK_artikli` (`artikli_id`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -168,6 +191,23 @@ ALTER TABLE `artikli`
 --
 ALTER TABLE `korisnici`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `korisnici_artikli`
+--
+ALTER TABLE `korisnici_artikli`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `korisnici_artikli`
+--
+ALTER TABLE `korisnici_artikli`
+  ADD CONSTRAINT `FK_artikli` FOREIGN KEY (`artikli_id`) REFERENCES `artikli` (`id`),
+  ADD CONSTRAINT `FK_korisnici` FOREIGN KEY (`korisnici_id`) REFERENCES `korisnici` (`id`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
