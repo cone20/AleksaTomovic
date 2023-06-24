@@ -1,13 +1,12 @@
 <?php
+error_reporting(E_ERROR | E_PARSE);
 session_start();
 
-// ukoliko korisnik nije ulogovan bice vracen na pocetnu
 if (!isset($_SESSION['user'])) {
 	header('Location: ./index.php');
 	exit();
 }
 
-// ukoliko je stisnuto dugme za logout
 if (isset($_POST['logout'])) {
 	unset($_SESSION['user']);
 	unset($_SESSION['admin']);
@@ -15,25 +14,18 @@ if (isset($_POST['logout'])) {
 	unset($_SESSION['noOf']);
 }
 
-include('./db.php');
 
-// sve sto radimo u cart.php (korpi) mogu samo korisnici da rade, tkd
-// sva funkcionalnost je omogucena samo ulogovanim korisnicima
+include('./db.php');
 if (isset($_SESSION['user'])) {
-	// uzimamo $id korisnika koji je ulogovan, postavljamo da je novac = 0 
 	$id = $_SESSION['user'];
 	$novac = 0;
+	$cartItems = 0;
 
-	// ukoliko nije postavljena sesija cart (tj. ako smo usli na cart bez prethodnog dodavanja icega u korpu)
+
 	if (!isset($_SESSION['cart'])) {
-		// podesicemo da je cart prazan niz, a da je noOf (number of) takodje prazan niz
 		$_SESSION['cart'] = array();	
-		$_SESSION['noOf'] = array();
 	}
 
-	// ukoliko nije postavljen noOf sesija ovde cemo je postaviti i zavisno od broja elemenata u korpi ispisacemo
-	// odredjeni broj 1, noOf sluzi da mi odredimo koliko kolicinski artikala korisnik zeli, tkd ako imamo u $_SESSION['cart'] id-eve {1, 2, 3}
-	// u noOf imacemo {1, 1, 1} na pocetku
 	if(!isset($_SESSION['noOf'])) {
 		$_SESSION['noOf'] = array();
 		
@@ -43,19 +35,15 @@ if (isset($_SESSION['user'])) {
 		
 	}
 
-	// IZABERI stanje IZ korisnici GDE JE id = $id
+	
 	$sql = "SELECT stanje FROM korisnici WHERE id = '$id'";
 	$res = $conn->query($sql);
 	while ($row = $res->fetch_assoc()) {
-		// azuriramo stanje koje korisnik ima na nalogu
 		$novac = $row['stanje'];
 	}
 
-	// na pocetku ukupna cena proizvoda je 0
 	$cenaUkupno = 0;
 
-	// pravimo asocijativni niz, koji ima nizove u sebi, ovo se koristi da bismo odredili po indeksu sta cemu odgovara
-	// npr ako nam je id 28 na indeksu 0, onda ce cena na indeksu 0 da odgovara tom id-u
 	$productInfo = array(
 		'id' => array(),
 		'naziv' => array(),
@@ -63,7 +51,6 @@ if (isset($_SESSION['user'])) {
 		'kolicina' => array(),
 	);
 
-	// ovde popunjavamo nas asocijativni niz
 	for ($i = 0; $i < sizeof($_SESSION['cart']); $i++) {
 		$id = $_SESSION['cart'][$i];
 
@@ -79,69 +66,65 @@ if (isset($_SESSION['user'])) {
 		}
 	}
 
-	// ovo je komplikovanije, ali u principu ukoliko name="add_..." pocinje sa "add" onda ce broj iza "_" da bude
-	// id koji je kliknut, zatim odredice se cena na osnovu kolicine artikla koja je izabrana
 	foreach($_POST as $key => $value) {
 		if(str_starts_with($key, 'add')) {
 			$index = explode('_', $key)[1];
 			$_SESSION['noOf'][$index] = $_POST[$key];
 			$cenaUkupno = 0;
 			for($i = 0; $i < sizeof($_SESSION['noOf']); $i++) {
-				$cenaUkupno += $productInfo['cena'][$i] * $_SESSION['noOf'][$i]; // ovde se vidi kako se racuna cena
+				$cenaUkupno += $productInfo['cena'][$i] * $_SESSION['noOf'][$i];
 			}
 		}
 	}
 
-	// ukoliko je kliknuto dugme za kupovinu
 	if(isset($_POST['buy'])) {
 		$success = false;
 		$errorMessage = '';
 
-		// proveravamo da li je korisnik uneo vece vrednosti od onih koje imamo u bazi
-		// i da li je uneo negativne brojeve
 		for($i = 0; $i < sizeof($_SESSION['noOf']); $i++) {
 			if($_SESSION['noOf'][$i] > $productInfo['kolicina'][$i]) {
 				$_SESSION['noOf'][$i] = $productInfo['kolicina'][$i];
 			} else if ($_SESSION['noOf'][$i] <= 0) {
 				$_SESSION['noOf'][$i] = 1;
 			}
-
-			// na kraju racunamo ukupnu cenu koja ce biti oduzeta sa naloga korisnika
 			$cenaUkupno += $productInfo['cena'][$i] * $_SESSION['noOf'][$i];
 		}
 
-		// ukoliko je cena veca od stanja na racunu izbacice se greska
 		if($cenaUkupno > $novac) {
 			$errorMessage = 'Немате довољно новца на рачуну! Уплатите у најближој пошти или се обратите администратору!';
-		} 
-		// ukoliko je prazna korpa izbacice se greska
-		else if (isset($_SESSION['cart']) && sizeof($_SESSION['cart']) === 0) {
+		} else if (isset($_SESSION['cart']) && sizeof($_SESSION['cart']) === 0) {
 			$errorMessage = 'Нисте убацили ништа у корпу!';
 		} else {
-			// ovde racunamo i azuriramo kolicinu svakog artikla koji smo odabrali
 			for($i = 0; $i < sizeof($_SESSION['cart']); $i++) {
 				$id = $_SESSION['cart'][$i];
+				$userId = $_SESSION['user'];
+				$kolicina = $_SESSION['noOf'][$i];
+				$cenaArtikla = $productInfo['cena'][$i] * $_SESSION['noOf'][$i];
+				$datum = (new DateTime())->format('Y-m-d H:i:s');
+
 				$kol = $productInfo['kolicina'][$i] - $_SESSION['noOf'][$i];
 				$sql = "UPDATE artikli SET kolicina = '$kol' WHERE id = '$id'";
+				$conn->query($sql);
+				
+				$sql = "INSERT INTO korisnici_artikli (korisnici_id, artikli_id, kolicina, datum_kupovine, cena)
+						VALUES('$userId', '$id', '$kolicina', '$datum', '$cenaArtikla')";
+				
 				$conn->query($sql);
 			}
 
 			$userId = $_SESSION['user'];
 			$novoStanje = $novac - $cenaUkupno;
-			// a ovde azuriramo stanje na racunu korisnika
+
 			$sql = "UPDATE korisnici SET stanje = '$novoStanje' WHERE id = '$userId'";
 			$conn->query($sql);
 			
 			$success = true;
-
-			// na kraju praznimo sesije cart i noOf
 			$_SESSION['cart'] = array();
 			$_SESSION['noOf'] = array();
 			header('Refresh: 2');
 		}
 	}
 
-	// ukoliko je kliknuto dugme za brisanje ispraznice se sesijski nizovi
 	if(isset($_POST['remove'])) {
 		$_SESSION['noOf'] = array();
 		$_SESSION['cart'] = array();
@@ -173,7 +156,7 @@ if (isset($_SESSION['user'])) {
 <body>
 	<nav class="navbar navbar-expand-lg navbar-light bg-light">
 		<div class="container px-4 px-lg-5">
-			<a class="navbar-brand fw-bolder display-1 text-uppercase" href="http://localhost/e-commerce/">Е-продавница</a>
+			<a class="navbar-brand fw-bolder display-1 text-uppercase" href="http://localhost/eprodavnica/">Е-продавница</a>
 			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
 				aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation"><span
 					class="navbar-toggler-icon"></span></button>
@@ -272,7 +255,7 @@ if (isset($_SESSION['user'])) {
 										</td>
 										<td>
 											<form method="post">
-												<input class="w-50" type="number" onchange="this.form.submit()" name="add_<?php echo $i ?>" min="1" max="<?php echo $productInfo['kolicina'][$i]; ?>" value="<?php echo $_SESSION['noOf'][$i]; ?>" placeholder="1">
+												<input class="w-50" type="number" onchange="this.form.submit()" name="add_<?php echo $i ?>" min="1" max="<?php echo ($productInfo['kolicina'][$i]) ? $productInfo['kolicina'][$i] : 1; ?>" value="<?php echo $_SESSION['noOf'][$i]; ?>" placeholder="1">
 											</form>
 										</td>
 										<td>
